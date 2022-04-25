@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pydantic import BaseModel
 
 
@@ -28,7 +28,47 @@ async def root():
     return {'Message' : 'Basic example of FastAPI'}
 
 
-# POST Method API의 예제
+## Query parameters에 다양한 유효섬검사를 추가하는 예제
+# Query 모듈을 사용하여 입력받는 parameter에 최소/최대길이 검사 또는 정규표현식을 유효성 검사 항목으로 추가
+# Query를 사용하여 기본값을 지정할 때에는 Query의 첫번째 인수로 str 데이터를 지정한다.
+#   - 기본값은 List와 같은 데이터도 지정 가능하다.
+@app.get('/read_items_with_valid')
+async def read_items_with_valid(q: Optional[str] = Query(None, min_length=3, max_length=50, regex="^fixedquery$")):
+    results = [{'item_id' : 'Item01'}, {'item_id' : 'Item02'}]
+    if q:
+        results.update({'q' : q})
+    return results
+
+
+# List/Multiple values to Path Parameters 예제
+# 동일한 Key를 통해서 여러 값을 입력받는 방법
+#   - <API_URI> + ? + ( <KEY_NAME> = <VALUE> & ... ) 의 형태로 API를 콜한다.
+#   - 그러면 아래 코드 기준으로 q 변수에는 입력된 여러 값이 List의 형태로 저장된다.
+@app.get('/items_with_multiple_vals')
+async def read_items_with_multiple_val(q: Optional[List[str]] = Query(None)):
+    query_items = {'q' : q}
+    return query_items
+
+
+# Metadata 정의 예제
+# Metadata는 입력되는 Parameters에 대한 정보를 가지고 기능적인 부분으로 동작하지 않고 OpenAPI와 문서화와 관련된
+# 사용자 인터페이스나 외부 도구를 통해서 문서에 포함된다.
+@app.get('/items/metadata')
+async def read_items_metadata(
+        q: Optional[str] = Query(
+            None,
+            title = 'Qeury String',
+            description = 'Query string for Metadata. It can check into documents interface',
+            min_length = 3,
+        )
+    ):
+        results = {'items' : [{'item_id' : 'Foo'}, {'item_id' : 'Bar'}]}
+        if q:
+            results.update({'q' : q})
+        return results
+    
+    
+## POST Method API의 예제
 # 사전 정의한 Data Model을 Input data로 지정하여 Request의 Body부분의 Data와 Model을 비교하여 유효성 검사 진행
 # 이후 지정한 변수로 입력된 데이터를 활용 가능함(예제에서는 <item> 변수)
 # DRF와 같이 유효성 검사 전/후 데이터가 나뉘지는 않고 입력 유효성 검사를 통과한 이후 객체에 대해서도 데이터 수정이 가능
