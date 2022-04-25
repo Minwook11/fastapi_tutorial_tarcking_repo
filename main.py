@@ -2,17 +2,57 @@ from enum import Enum
 from typing import Optional
 
 from fastapi import FastAPI
+from pydantic import BaseModel
+
 
 class ModelEnum(str, Enum):
     alexnet = "alexnet"
     resnet = "resnet"
     lenet = "lenet"
 
+
+# Data Model을 정의한다. 정의할 때는 이전에 Query Parameters에서와 비슷하게 정의가능
+# 기본값 지정 : 필수 데이터, Type Hinting 적극 활용, Optional을 통한 조건부 데이터 지정 가능 등등   
+class Item(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+
+
 app = FastAPI()
+
 
 @app.get('/')
 async def root():
     return {'Message' : 'Basic example of FastAPI'}
+
+
+# POST Method API의 예제
+# 사전 정의한 Data Model을 Input data로 지정하여 Request의 Body부분의 Data와 Model을 비교하여 유효성 검사 진행
+# 이후 지정한 변수로 입력된 데이터를 활용 가능함(예제에서는 <item> 변수)
+# DRF와 같이 유효성 검사 전/후 데이터가 나뉘지는 않고 입력 유효성 검사를 통과한 이후 객체에 대해서도 데이터 수정이 가능
+#   - DRF는 데이터 직접 접근을 막는 편 (확실하게 확인할 필요는 있음)
+@app.post('/items/')
+async def create_item(item: Item):
+    item_dict = item.dict()
+    if item.tax:
+        price_with_tax = item.price + item.tax
+        item_dict.update({'price with tax' : price_with_tax})
+    return item_dict
+
+
+# PUT Method를 사용한 Path parameters와 Query parameters, Request Body를 함께 활용하는 예제
+# 이 경우 구분 기준은 다음과 같다.
+#   - API URI에 포함된 경우, Path parameters로 구분한다.
+#   - int/float/str/bool과 같은 Singular 타입의 경우, Qeury parameter로 구분한다.
+#   - Pydantic Model로 정의 되었을 경우, Request의 Body 데이터로 구분한다.
+@app.put('/items/{item_id}')
+async def create_item(item_id: int, item: Item, q: Optional[str] = None):
+    result = {"item_id" : item_id, **item.dict()}
+    if q:
+        result.update({'q' : q})
+    return result
 
 
 fake_item_db = [{'item_name' : 'Item_01'}, {'item_name' : 'Item_02'}, {'item_name' : 'Item_03'}]
