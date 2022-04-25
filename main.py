@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 
-from fastapi import FastAPI, Query, Path
+from fastapi import FastAPI, Query, Path, Body
 from pydantic import BaseModel
 
 
@@ -20,12 +20,38 @@ class Item(BaseModel):
     tax: Optional[float] = None
 
 
+class User(BaseModel):
+    username: str
+    full_name: Optional[str] = None
+
+
 app = FastAPI()
 
 
 @app.get('/')
 async def root():
     return {'Message' : 'Basic example of FastAPI'}
+
+
+## 이전 Query, Path와 비슷한 Body 모듈에 대한 예제
+# Body 모듈의 사용법은 이전의 Query, Path와 거의 동일하다.
+# 지정한 변수명과 같은 Key를 Request의 Body에서 찾은 후 데이터를 읽어온다.
+# 즉, Body를 지정하는 변수명은 Request Body내부의 Key와 동일해야 한다. Type Hinting에 맞는 데이터 타입도 따질 것
+@app.put('/items/body/{item_id}')
+async def update_item_use_body(item_id: int, item: Item, user: User, importance: List[str] = Body(...)):
+    results = {'item_id' : item_id, 'item' : item, 'user' : user, 'importance' : importance}
+    return results
+
+
+# Request Body가 단일 모델에 대해서 구성되어 있다면 해당 모델의 이름은 표현되지 않는다.
+# 일관적인 데이터 형상 관리를 위해서 단일 모델 데이터를 다루는 경우에도 이름을 표시해줄 수 있는 옵션이 있다.
+#   - embed 옵션을 True로 지정하여 이용 가능하다.
+#   - 정확하게 어떻게 형태가 바뀌는 지는 https://fastapi.tiangolo.com/tutorial/body-multiple-params/
+#   - 위 링크 가장 아래쪽 확인 바람
+@app.put('/items/body/embed/{item_id}')
+async def use_body_embed_opt(item_id: int, item: Item = Body(..., embed=True)):
+    results = {'item_id' : item_id, 'item' : item}
+    return results
 
 
 ## 이전 튜토리얼과 비슷하게 이번에는 Path Parameters에 대해서 다양한 유효성 검사를 추가하는 예제
