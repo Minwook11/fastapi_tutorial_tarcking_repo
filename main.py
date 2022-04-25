@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Path
 from pydantic import BaseModel
 
 
@@ -26,6 +26,28 @@ app = FastAPI()
 @app.get('/')
 async def root():
     return {'Message' : 'Basic example of FastAPI'}
+
+
+## 이전 튜토리얼과 비슷하게 이번에는 Path Parameters에 대해서 다양한 유효성 검사를 추가하는 예제
+# Path라는 모듈을 이용한다. 기본적인 형태는 다음과 같고, Path parameters는 사용할 경우에는 필수 데이터이므로
+# Path(<...>)의 방법으로 필수 데이터임을 명시한다.
+# Path parameters에 적용하는 validation은 숫자와 관련된 것을 적용할 수 있으며 키워드는 다음과 같다.
+#   - gt : 'g'reater 't'han
+#   - ge : 'g'reater than or 'e'qual
+#   - lt : 'l'ess 't'han
+#   - le : 'l'ess than or 'e'qual
+#   * Integer뿐만 아니라 Float 데이터에도 사용 가능하다.
+#   * Query는 문자열만, Path는 숫자만 유효성 검사를 담당하는 것은 아니다. 양쪽 모두 같은 방법으로 각각의 유효성 검사 가능함
+@app.get('/items_with_path/{item_id}')
+async def read_items_path(
+    item_id: int = Path(..., title='The Id of the item to get', gt=0, le=1000),
+    q: Optional[str] = Query(None, alias='item-query'),
+    size: float = Query(..., gt=0, lt=10.5)
+):
+    results = {'item_id' : item_id}
+    if q:
+        results.update({'q' : q})    
+    return results
 
 
 ## Query parameters에 다양한 유효섬검사를 추가하는 예제
