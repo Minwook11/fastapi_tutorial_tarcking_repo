@@ -1,8 +1,8 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Set, Optional
 
 from fastapi import FastAPI, Query, Path, Body
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class ModelEnum(str, Enum):
@@ -11,13 +11,27 @@ class ModelEnum(str, Enum):
     lenet = "lenet"
 
 
+# 추가적인 Model을 정의하여 Nested Model을 사용해보는 예제
+# 아래 Item 모델에서 지금 정의한 Image 모델을 사용
+# int, str, float과 같은 일반적인 타입 뿐만 아니라 특별한 타입의 데이터와 그에 대한 유효성 검사 예제
+# 아래에서는 HttpUrl을 예시로 사용함
+class Image(BaseModel):
+    url: HttpUrl
+    name: str
+
+
 # Data Model을 정의한다. 정의할 때는 이전에 Query Parameters에서와 비슷하게 정의가능
-# 기본값 지정 : 필수 데이터, Type Hinting 적극 활용, Optional을 통한 조건부 데이터 지정 가능 등등   
+# 기본값 지정 : 필수 데이터, Type Hinting 적극 활용, Optional을 통한 조건부 데이터 지정 가능 등등
+## List 및 Set 모듈을 사용하여 Model에 여러 데이터 타입을 사용하는 예제
+# 당연히 Dict도 사용 가능하다.
 class Item(BaseModel):
     name: str
     description: Optional[str] = None
     price: float
     tax: Optional[float] = None
+    tagL: List[str] = []
+    tagS: Set[str] = set()
+    image: Optional[Image] = None
 
 
 ## Field 모듈을 사용하는 예제로서 이전의 Path, Query, Body와 유사한 사용법을 보인다.
@@ -36,6 +50,13 @@ app = FastAPI()
 @app.get('/')
 async def root():
     return {'Message' : 'Basic example of FastAPI'}
+
+
+# Nested Model의 형태를 확인해보기 위한 테스트 API
+@app.put('/nested_model/{item_id}')
+async def nested_model(item_id: int, item: Item):
+    results = {'item_id' : item_id, 'item' : item}
+    return results
 
 
 ## 이전 Query, Path와 비슷한 Body 모듈에 대한 예제
