@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional
 
 from fastapi import FastAPI, Query, Path, Body
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ModelEnum(str, Enum):
@@ -20,9 +20,14 @@ class Item(BaseModel):
     tax: Optional[float] = None
 
 
+## Field 모듈을 사용하는 예제로서 이전의 Path, Query, Body와 유사한 사용법을 보인다.
+# Field 모듈은 Pydantic 패키지에 포함되어 있으며 사전정의 데이터 모델에 적용할 수 있다.
+# gt, ge등과 같은 값을 기준으로 하는 검사나 길이와 같은 추가적인 유효성 검사를 지정할 수 있다.
+# Description과 같은 메타데이터 지정에도 사용할 수 있다.
 class User(BaseModel):
-    username: str
-    full_name: Optional[str] = None
+    username: str = Field(..., title="User's login account string", max_length=64)
+    full_name: Optional[str] = Field(None, description="User's real full name. It's sooooooo long~", max_length=512)
+    temp_val: Optional[int] = Field(None, gt=1, description="Temporary slot. Basically this slot is useless")
 
 
 app = FastAPI()
