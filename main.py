@@ -1,5 +1,7 @@
 from enum import Enum
 from typing import List, Set, Optional
+from datetime import datetime, time, timedelta
+from uuid import UUID
 
 from fastapi import FastAPI, Query, Path, Body
 from pydantic import BaseModel, Field, HttpUrl
@@ -33,6 +35,7 @@ class Item(BaseModel):
     tagS: Set[str] = set()
     image: Optional[Image] = None
     
+    ## 사용자 정의 Data Model에 대하여 데이터 값 예시를 지정하는 방법의 예제
     class Config:
         schema_extra= {
             'example' : {
@@ -63,7 +66,32 @@ async def root():
     return {'Message' : 'Basic example of FastAPI'}
 
 
+## 일반적인 데이터 타입이 아닌 다양한 데이터 타입을 사용하는 예제
+# 사용가능한 데이터 타입의 종류에 대한 정확한 확인은 https://pydantic-docs.helpmanual.io/usage/types/
+@app.put("/read_item_with_extra_dtype/{item_id}")
+async def read_items_with_extra_dtype(
+    item_id: UUID,
+    start_datetime: Optional[datetime] = Body(None),
+    end_datetime: Optional[datetime] = Body(None),
+    repeat_at: Optional[time] = Body(None),
+    process_after: Optional[timedelta] = Body(None),
+):
+    start_process = start_datetime + process_after
+    duration = end_datetime - start_process
+    return {
+        "item_id": item_id,
+        "start_datetime": start_datetime,
+        "end_datetime": end_datetime,
+        "repeat_at": repeat_at,
+        "process_after": process_after,
+        "start_process": start_process,
+        "duration": duration,
+    }
+
+
 # Nested Model의 형태를 확인해보기 위한 테스트 API
+# API 자체에 케이스 별로 관리 가능한 데이터 셈플을 추가하는 방법 예제
+# 케이스 별로 관리가 가능하고 자세한 설명 함께 기록해 놓을 수 있다.
 @app.put('/nested_model/{item_id}')
 async def nested_model(
     item_id: int, 
