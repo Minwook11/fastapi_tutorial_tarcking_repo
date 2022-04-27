@@ -32,6 +32,17 @@ class Item(BaseModel):
     tagL: List[str] = []
     tagS: Set[str] = set()
     image: Optional[Image] = None
+    
+    class Config:
+        schema_extra= {
+            'example' : {
+                'name' : 'Example_name',
+                'description' : 'Example_description',
+                'price' : 1000.0,
+                'tax' : 13.4,
+                'tagL' : ['tag1', 'tag2'],
+            }
+        }
 
 
 ## Field 모듈을 사용하는 예제로서 이전의 Path, Query, Body와 유사한 사용법을 보인다.
@@ -54,7 +65,36 @@ async def root():
 
 # Nested Model의 형태를 확인해보기 위한 테스트 API
 @app.put('/nested_model/{item_id}')
-async def nested_model(item_id: int, item: Item):
+async def nested_model(
+    item_id: int, 
+    item: Item = Body(
+        ...,
+        examples = {
+            'norma'"normal": {
+                "summary": "A normal example",
+                "description": "A **normal** item works correctly.",
+                "value": {
+                    "url": "https://Foo",
+                    "name": "A very nice Item"
+                },
+            },
+            "converted": {
+                "summary": "An example with converted data",
+                "description": "FastAPI can convert price `strings` to actual `numbers` automatically",
+                "value": {
+                    "url": "https://Bar",
+                    "name": "35.4",
+                },
+            },
+            "invalid": {
+                "summary": "Invalid data is rejected with an error",
+                "value": {
+                    "url": "http://Baz",
+                    "name": "thirty five point four",
+                },
+            },
+        }
+    )):
     results = {'item_id' : item_id, 'item' : item}
     return results
 
