@@ -1,7 +1,9 @@
 from enum import Enum
-from typing import List, Set, Optional
+from lib2to3.pytree import Base
+from typing import List, Set, Dict, Optional, Union
 from datetime import datetime, time, timedelta
 from uuid import UUID
+from click import option
 
 from fastapi import FastAPI, Query, Path, Body
 from pydantic import BaseModel, Field, HttpUrl
@@ -60,16 +62,53 @@ class User(BaseModel):
 
 
 # Input/Output 에서 사용할 Model 정의
-class TestIn(BaseModel):
-    credential_data: str
-    plain_text: str
-    plain_num: int
-    option: Optional[int] = None
+# class TestIn(BaseModel):
+#     credential_data: str
+#     plain_text: str
+#     plain_num: int
+#     option: Optional[int] = None
 
-class TestOut(BaseModel):
+# class TestOut(BaseModel):
+#     plain_text: str
+#     plain_num: int
+#     option: Optional[int] = None
+    
+
+## Models와 관련된 더 다양한 기능과 그에 대한 예제들
+# class TestInDB(BaseModel):
+#     plain_text: str
+#     hashed_data: str
+#     plain_num: int
+#     option: Optional[int] = None
+    
+    
+# 상속을 활용하여 코드 중복을 줄일 수 있다.
+class BaseTest(BaseModel):
     plain_text: str
     plain_num: int
     option: Optional[int] = None
+    
+class TestIn(BaseTest):
+    credential_data: str
+    
+class TestOut(BaseTest):
+    pass
+
+class TestInDB(BaseTest):
+    hashed_data: str
+
+
+# Union 기능 예제 확인용 모델 선언
+class BaseRide(BaseModel):
+    description: str
+    type: str
+    
+class Car(BaseRide):
+    type: str = "Car"
+    weight: float
+
+class Bicycle(BaseRide):
+    type: str = "Bicycle"
     
 
 app = FastAPI()
@@ -78,6 +117,61 @@ app = FastAPI()
 @app.get('/')
 async def root():
     return {'Message' : 'Basic example of FastAPI'}
+
+
+union_test_items = {
+    "item_1" : {
+        "description" : "It's just a car Bro~",
+        "type" : "Car",
+        "weight" : 1000.0,
+    },
+    "item_2" : {
+        "description" : "You need assist wheel~",
+        "type" : "Bicycle",
+    },
+}
+
+list_test_items = [
+    {"type" : "Internal Item", "description" : "Item no.1"},
+    {"type" : "Internal Item", "description" : "Item no.2"}
+]
+
+
+# Union 기능 사용 예제
+# Union을 사용해서 다수의 Model을 포함시키면 다양한 형태의 Response Data를 편하게 구성할 수 있다.
+@app.get("/items/union/{item_id}", response_model=Union[Car, Bicycle])
+async def items_with_union(item_id: str):
+    return union_test_items[item_id]
+
+
+# List 기능 사용 예제
+# Response의 형태를 List[] 내부에 지정한 모델로 구성된 리스트의 형태로 구성할 수 있다.
+# List[] 내부에는 단일 모델만 정해줄 수 있다.
+@app.get("/items/list_func", response_model=List[BaseRide])
+async def items_with_list():
+    return list_test_items
+
+
+# Dict 기능 사용 예제
+# Response의 형태를 Dict[] 내부에 지정한 2개의 데이터 타입을 순서대로 Key-Value 쌍으로 구성할 수 있다.
+# Dict[] 내부에는 2개의 값을 사용해야 한다. (Key-Value 쌍을 생각하자)
+@app.get("/keyword-weights/", response_model=Dict[str, float])
+async def read_keyword_wrights():
+    return {"test_01" : 2, "test_02" : 3}
+
+
+# DB에 접근시 사용할 Model을 사용하는 예제
+# Data Input --> TestIn, DB Access --> TestInDB, Data Output --> TestOut
+# 각각 흐름에 맞는 형태의 Model을 정의 후 사용
+def fake_test_data_save(test_in: TestIn):
+    test_in_db = TestInDB(**test_in.dict(), hashed_data = "It's Hashed ! --> " + test_in.credential_data)
+    print('Save Test Complete')
+    return test_in_db
+
+@app.post("/test/complexity_save")
+async def test_complexity_save(test_in: TestIn):
+    saved_result = fake_test_data_save(test_in)
+    return saved_result
 
 
 ## Response 데이터에도 사전 정의 Model을 활용할 수 있는 예제
