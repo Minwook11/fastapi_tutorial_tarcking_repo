@@ -5,10 +5,15 @@ from datetime import datetime, time, timedelta
 from uuid import UUID
 from click import option
 
-from fastapi import FastAPI, Query, Path, Body
+from fastapi import FastAPI, Query, Path, Body, Request, HTTPException, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, PlainTextResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field, HttpUrl
 
 
+# Model Class's Define
 class ModelEnum(str, Enum):
     alexnet = "alexnet"
     resnet = "resnet"
@@ -101,7 +106,7 @@ class TestInDB(BaseTest):
 # Union 기능 예제 확인용 모델 선언
 class BaseRide(BaseModel):
     description: str
-    type: str
+    type: int
     
 class Car(BaseRide):
     type: str = "Car"
@@ -110,6 +115,14 @@ class Car(BaseRide):
 class Bicycle(BaseRide):
     type: str = "Bicycle"
     
+
+# Exception Class Define
+# Custom한 Exception Class를 정의하여 활용할 수 있다.
+# 당연히 상속을 활용할 수 있음
+class UnicornException(Exception):
+    def __init__(self, name):
+        self.name = name
+
 
 app = FastAPI()
 
@@ -135,6 +148,66 @@ list_test_items = [
     {"type" : "Internal Item", "description" : "Item no.1"},
     {"type" : "Internal Item", "description" : "Item no.2"}
 ]
+
+
+## Error 제어 예제
+# 기본적인 HTTPException 패키지를 사용한다. 데이터는 기존의 테스트 데이터 중 하나를 유용.
+# Custom Header들을 추가할 수 있다. Exception raise시 headers에 Dict의 형태로 정의하여 사용
+@app.get("/items/read/{item_id}/except_handling")
+async def item_read_with_except_handling(item_id: str):
+    if item_id not in union_test_items:
+        raise HTTPException(
+            status_code=404, 
+            detail="Item does not found",
+            headers={
+                "X-Error" : "X Error occured",
+                "Custom Headers" : "This is custom header"
+            },
+        )
+    return  {"item" : union_test_items[item_id]}
+
+
+# Custom Exception을 사용하는 예제
+@app.exception_handler(UnicornException)
+async def unicorn_exception_handler(request: Request, exc: UnicornException):
+    return JSONResponse(
+        status_code=418,
+        content={"message" : "Oops! {} did something wrong!".format(exc.name)}
+    )
+    
+@app.get("/unicorns/{name}")
+async def is_that_unicorn(name: str):
+    if name == "yolo":
+        raise UnicornException(name=name)
+    return {"name" : name}
+
+
+# Default Exception인 HTTPException을 Override하여 사용하는 예제
+@app.exception_handler(StarletteHTTPException)
+async def starlette_http_exception_handler(request, exc):
+    return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
+
+# @app.exception_handler(RequestValidationError)
+# async def validation_exception_handler(reqeust, exc):
+#     return PlainTextResponse(str(exc), status_code=400)
+
+@app.get("/items/{item_id}/override_exception")
+async def read_item_override_exception(item_id: int):
+    if item_id == 3:
+        raise HTTPException(status_code=418, detail="Nope! I don't like 3")
+    
+
+# Validation Error 발생하였을 때, Request Body에 입력되었던 데이터를 Response에 포함시키는 예제
+@app.exception_handler(RequestValidationError)
+async def validtation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=jsonable_encoder({"detail" : exc.errors(), "body" : exc.body}),
+    )
+    
+@app.post("/items/exception_class/body")
+async def use_exception_class_body(item: BaseRide):
+    return item
 
 
 # Union 기능 사용 예제
