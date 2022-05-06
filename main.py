@@ -30,7 +30,8 @@ class Item(BaseModel):
     name: str
     description: Optional[str] = None
     price: float
-    tax: Optional[float] = None
+    # tax: Optional[float] = None
+    tax: float = 10.5
     tagL: List[str] = []
     tagS: Set[str] = set()
     image: Optional[Image] = None
@@ -58,12 +59,73 @@ class User(BaseModel):
     temp_val: Optional[int] = Field(None, gt=1, description="Temporary slot. Basically this slot is useless")
 
 
+# Input/Output 에서 사용할 Model 정의
+class TestIn(BaseModel):
+    credential_data: str
+    plain_text: str
+    plain_num: int
+    option: Optional[int] = None
+
+class TestOut(BaseModel):
+    plain_text: str
+    plain_num: int
+    option: Optional[int] = None
+    
+
 app = FastAPI()
 
 
 @app.get('/')
 async def root():
     return {'Message' : 'Basic example of FastAPI'}
+
+
+## Response 데이터에도 사전 정의 Model을 활용할 수 있는 예제
+# Response 데이터에 모델을 지정하면 자동 변환, 유효성 검사, 문서 반영의 이점을 가져갈 수 있다.
+# 하지만 무엇보다도 출력 데이터에 제한을 걸어둔다는 것이 더욱 중요한 포인트
+@app.post("/items/response_model", response_model=Item)
+async def create_item_use_response_model(item: Item):
+    return item
+
+
+# Request에 포함될 데이터를 Input, Response에 포함될 데이터를 Output으로 지정하여 활용하는 예제
+@app.post("/test/in_out_model", response_model=TestOut)
+async def in_out_model_use_test(item: TestIn):
+    return item
+
+
+# response_model_exclude_unset, response_model_include, response_model_exclude 사용 예제
+items = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The Bar fighters", "price": 62, "tax": 20.2},
+    "baz": {
+        "name": "Baz",
+        "description": "There goes my baz",
+        "price": 50.2,
+        "tax": 10.5,
+    },
+}
+
+# response_model_exclude_unset 옵션은 True/False로 지정하여 사용하며 기본값은 False
+# 지정된 모델의 Key중 값이 Set되어 있는 데이터만 사용하고자 할 때 지정 True로 지정
+@app.get("/items/{item_id}/exclude_unset", response_model=Item, response_model_exclude_unset=True)
+async def read_item_with_exclude_unset(item_id: str):
+    return items[item_id]
+
+# response_model_include는 지정한 Key값과 Data만 사용할 때 사용
+@app.get(
+    "/items/{item_id}/name/include",
+    response_model=Item,
+    response_model_include=["name", "description"],
+)
+async def read_item_name_with_include(item_id: str):
+    return items[item_id]
+
+# response_model_exclude는 지정한 Key값과 Data를 제외할 때 사용
+# 정의된 전체 Model Key중 지정한 Key만 제외하고 전부 표현됨
+@app.get("/items/{item_id}/public/exclude", response_model=Item, response_model_exclude=["tax"])
+async def read_item_public_data_with_exclude(item_id: str):
+    return items[item_id]
 
 
 ## 일반적인 데이터 타입이 아닌 다양한 데이터 타입을 사용하는 예제
